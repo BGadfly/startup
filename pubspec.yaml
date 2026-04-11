@@ -1,0 +1,44 @@
+name: hair_extension_app
+description: Приложение для подбора наращивания волос
+version: 1.0.0
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  url_launcher: ^6.2.1
+  # UI
+  cupertino_icons: ^1.0.6
+  google_fonts: ^6.1.0
+
+  # Работа с API
+  http: ^1.1.0
+
+  # Выбор изображений
+  image_picker: ^1.0.5
+
+  # Хранение данных
+  shared_preferences: ^2.2.2
+
+  # Навигация
+  go_router: ^12.0.0
+
+  # Управление состоянием
+  provider: ^6.1.1
+
+  # Утилиты
+  intl: ^0.18.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
