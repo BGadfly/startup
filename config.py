@@ -278,3 +278,62 @@ if __name__ == "__main__":
     print(f"\nИНСТРУКЦИЯ: {recommendation['instructions']}")
     print(f"\nРЕКОМЕНДАЦИИ ПО УХОДУ: {recommendation['care_recommendations']}")
     print("=" * 50)
+
+
+
+    # В конце config.py добавьте:
+
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+import base64
+
+app = Flask(__name__)
+CORS(app)
+
+@app.route('/analyze', methods=['POST'])
+def analyze():
+    try:
+        data = request.json
+        
+        # Декодируем base64 фото
+        photo1_bytes = base64.b64decode(data['photo1'])
+        photo2_bytes = base64.b64decode(data['photo2'])
+        photo3_bytes = base64.b64decode(data['photo3'])
+        comment = data.get('comment', '')
+        
+        # Импортируем функции из ai_module
+        from ai_module import analyze_hair_from_photos
+        from config import get_hair_recommendation
+        
+        # Анализируем фото
+        analysis_result = analyze_hair_from_photos(
+            photo1_bytes, photo2_bytes, photo3_bytes, comment
+        )
+        
+        # Получаем рекомендацию
+        recommendation = get_hair_recommendation(analysis_result)
+        
+        # Формируем ответ
+        response = {
+            "success": True,
+            "user_comment": comment,
+            "analysis": {
+                "texture": analysis_result["texture"],
+                "density": analysis_result["density"],
+                "part_type": analysis_result["part_type"]
+            },
+            "problem_zones": analysis_result["problem_zones"],
+            "individual_analyses": analysis_result["individual_analyses"],
+            "recommendation": recommendation
+        }
+        
+        return jsonify(response)
+        
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
