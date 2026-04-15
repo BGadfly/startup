@@ -1,8 +1,9 @@
-// models/hair_analysis.dart
+// lib/models/hair_analysis.dart
+import 'package:flutter/foundation.dart';
 
 class AnalysisResult {
   final String comment;
-  final Map<String, PhotoAnalysis> photosAnalysis; // front, side, top
+  final Map<String, PhotoAnalysis> photosAnalysis;
   final AggregatedData aggregated;
   final ProblemZones problemZones;
   final Recommendation recommendation;
@@ -48,10 +49,26 @@ class AnalysisResult {
 
     return result;
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'user_comment': comment,
+      'individual_analyses': {
+        'front': photosAnalysis['front']?.toJson(),
+        'side': photosAnalysis['side']?.toJson(),
+        'top': photosAnalysis['top']?.toJson(),
+      },
+      'analysis': aggregated.toJson(),
+      'problem_zones': problemZones.toJson(),
+      'recommendation': recommendation.toJson(),
+      'success': success,
+      'error': error,
+    };
+  }
 }
 
 class PhotoAnalysis {
-  final String viewType; // front, side, top
+  final String viewType;
   final String texture;
   final String density;
   final String partType;
@@ -73,6 +90,16 @@ class PhotoAnalysis {
       partType: json['part_type'] ?? 'прямой',
       problemZones: ProblemZones.fromJson(json['problem_zones'] ?? {}),
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'view_type': viewType,
+      'texture': texture,
+      'density': density,
+      'part_type': partType,
+      'problem_zones': problemZones.toJson(),
+    };
   }
 }
 
@@ -97,14 +124,23 @@ class AggregatedData {
       problemZones: ProblemZones.fromJson(json['problem_zones'] ?? {}),
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'texture': texture,
+      'density': density,
+      'part_type': partType,
+      'problem_zones': problemZones.toJson(),
+    };
+  }
 }
 
 class ProblemZones {
   final bool hasBaldSpots;
-  final String? baldType; // "залысины", "лысина", "местное выпадение"
-  final double topAreaPercentage; // процент площади сверху
-  final String? spotSizeCategory; // "до 5см", "5-10см", "больше 10см"
-  final List<String> spotLocations; // локации проблем
+  final String? baldType;
+  final double topAreaPercentage;
+  final String? spotSizeCategory;
+  final List<String> spotLocations;
 
   ProblemZones({
     required this.hasBaldSpots,
@@ -122,6 +158,16 @@ class ProblemZones {
       spotSizeCategory: json['spot_size_category'],
       spotLocations: List<String>.from(json['spot_locations'] ?? []),
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'has_bald_spots': hasBaldSpots,
+      'bald_type': baldType,
+      'top_area_percentage': topAreaPercentage,
+      'spot_size_category': spotSizeCategory,
+      'spot_locations': spotLocations,
+    };
   }
 
   String getFormattedDescription() {
@@ -166,9 +212,20 @@ class Recommendation {
       fullResponse: json['full_response'] ?? '',
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'technique': technique,
+      'materials': materials,
+      'scheme_description': schemeDescription,
+      'instructions': instructions,
+      'care_recommendations': careRecommendations,
+      'full_response': fullResponse,
+    };
+  }
 }
 
-// Вспомогательные функции для форматирования
+// Расширения для форматирования
 extension PartTypeExtension on String {
   String getDisplayName() {
     switch (this) {
@@ -223,187 +280,3 @@ extension TextureExtension on String {
     }
   }
 }
-
-extension BaldTypeExtension on String {
-  String getDisplayName() {
-    switch (this) {
-      case 'залысины':
-        return 'Залысины';
-      case 'лысина':
-        return 'Лысина';
-      case 'местное выпадение':
-        return 'Местное выпадение';
-      default:
-        return this;
-    }
-  }
-}
-
-// Функция для отправки запроса к бэкенду
-class HairAnalysisService {
-  static const String baseUrl =
-      'YOUR_PYTHON_BACKEND_URL'; // Замените на ваш URL
-
-  Future<AnalysisResult> analyzeHair({
-    required String photo1Base64, // анфас
-    required String photo2Base64, // профиль
-    required String photo3Base64, // сверху
-    String comment = '',
-  }) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/analyze'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'photo1': photo1Base64,
-          'photo2': photo2Base64,
-          'photo3': photo3Base64,
-          'comment': comment,
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> data = jsonDecode(response.body);
-        return AnalysisResult.fromJson(data);
-      } else {
-        return AnalysisResult(
-          comment: comment,
-          photosAnalysis: {},
-          aggregated: AggregatedData(
-            texture: 'не определено',
-            density: 'не определено',
-            partType: 'прямой',
-            problemZones: ProblemZones(
-              hasBaldSpots: false,
-              topAreaPercentage: 0,
-              spotLocations: [],
-            ),
-          ),
-          problemZones: ProblemZones(
-            hasBaldSpots: false,
-            topAreaPercentage: 0,
-            spotLocations: [],
-          ),
-          recommendation: Recommendation(
-            technique: 'Ошибка',
-            materials: 'Не удалось получить рекомендацию',
-            schemeDescription: '',
-            instructions: '',
-            careRecommendations: '',
-            fullResponse: '',
-          ),
-          success: false,
-          error: 'Ошибка сервера: ${response.statusCode}',
-        );
-      }
-    } catch (e) {
-      return AnalysisResult(
-        comment: comment,
-        photosAnalysis: {},
-        aggregated: AggregatedData(
-          texture: 'не определено',
-          density: 'не определено',
-          partType: 'прямой',
-          problemZones: ProblemZones(
-            hasBaldSpots: false,
-            topAreaPercentage: 0,
-            spotLocations: [],
-          ),
-        ),
-        problemZones: ProblemZones(
-          hasBaldSpots: false,
-          topAreaPercentage: 0,
-          spotLocations: [],
-        ),
-        recommendation: Recommendation(
-          technique: 'Ошибка',
-          materials: 'Не удалось получить рекомендацию',
-          schemeDescription: '',
-          instructions: '',
-          careRecommendations: '',
-          fullResponse: '',
-        ),
-        success: false,
-        error: 'Ошибка соединения: $e',
-      );
-    }
-  }
-}
-
-// Пример использования в Flutter приложении
-/*
-class HairAnalysisScreen extends StatefulWidget {
-  @override
-  _HairAnalysisScreenState createState() => _HairAnalysisScreenState();
-}
-
-class _HairAnalysisScreenState extends State<HairAnalysisScreen> {
-  final HairAnalysisService _service = HairAnalysisService();
-  bool _isLoading = false;
-  AnalysisResult? _result;
-
-  Future<void> _analyze() async {
-    setState(() => _isLoading = true);
-    
-    // Конвертация файлов в base64
-    String photo1Base64 = base64Encode(await _photo1.readAsBytes());
-    String photo2Base64 = base64Encode(await _photo2.readAsBytes());
-    String photo3Base64 = base64Encode(await _photo3.readAsBytes());
-    
-    _result = await _service.analyzeHair(
-      photo1Base64: photo1Base64,
-      photo2Base64: photo2Base64,
-      photo3Base64: photo3Base64,
-      comment: _commentController.text,
-    );
-    
-    setState(() => _isLoading = false);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_result != null && _result!.success) {
-      return Column(
-        children: [
-          // Результаты анализа
-          Text('Структура: ${_result!.aggregated.texture.getDisplayName()}'),
-          Text('Густота: ${_result!.aggregated.density.getDisplayName()}'),
-          Text('Пробор: ${_result!.aggregated.partType.getDisplayName()}'),
-          
-          // Проблемные зоны
-          if (_result!.problemZones.hasBaldSpots)
-            Text('Проблемные зоны: ${_result!.problemZones.getFormattedDescription()}'),
-          
-          // Рекомендация
-          Card(
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Рекомендуемая техника:', style: TextStyle(fontWeight: FontWeight.bold)),
-                  Text(_result!.recommendation.technique),
-                  SizedBox(height: 8),
-                  Text('Материалы:', style: TextStyle(fontWeight: FontWeight.bold)),
-                  Text(_result!.recommendation.materials),
-                  SizedBox(height: 8),
-                  Text('Схема:', style: TextStyle(fontWeight: FontWeight.bold)),
-                  Text(_result!.recommendation.schemeDescription),
-                  SizedBox(height: 8),
-                  Text('Инструкция:', style: TextStyle(fontWeight: FontWeight.bold)),
-                  Text(_result!.recommendation.instructions),
-                  SizedBox(height: 8),
-                  Text('Уход:', style: TextStyle(fontWeight: FontWeight.bold)),
-                  Text(_result!.recommendation.careRecommendations),
-                ],
-              ),
-            ),
-          ),
-        ],
-      );
-    }
-    
-    return Container(); // Ваш UI загрузки/ошибки
-  }
-}
-*/
