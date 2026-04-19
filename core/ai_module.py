@@ -1,128 +1,360 @@
-"""AI модуль для анализа волос"""
+import base64
+import json
+import re
+import requests
+import time
+from io import BytesIO
+from PIL import Image
+from typing import Dict, List, Optional
 
-import cv2
-import numpy as np
-from skimage import feature
-
-
-def classify_hair_texture(image_bytes):
-    """Классифицирует текстуру волос (прямые, волнистые, кудрявые)"""
-    np_arr = np.frombuffer(image_bytes, np.uint8)
-    img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-    if img is None:
-        raise ValueError("Не удалось загрузить изображение")
-
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    lbp = feature.local_binary_pattern(gray, 8, 1, method="uniform")
-    texture_score = np.std(lbp)
-
-    if texture_score < 2.0:
-        return "прямые"
-    elif texture_score < 4.0:
-        return "волнистые"
-    else:
-        return "кудрявые"
+# =========================
+# 🔧 КОНФИГУРАЦИЯ API
+# =========================
+API_KEY = 'sk_gzRXyIxocRxqxbiKPDiV0YvVfh4MLgTc'
+API_URL = "https://gen.pollinations.ai/v1/chat/completions"
+MAX_RETRIES = 3
+RETRY_DELAY = 3
 
 
-def estimate_density(image_bytes, roi_x=100, roi_y=200, roi_w=200, roi_h=200):
-    """Оценивает густоту волос (густые, средние, редкие)"""
-    np_arr = np.frombuffer(image_bytes, np.uint8)
-    img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-    if img is None:
-        raise ValueError("Не удалось загрузить изображение")
+# =========================
+# 🌐 ФУНКЦИЯ ЗАПРОСА С ПОВТОРАМИ
+# =========================
+def make_api_request(payload: dict, timeout: int = 60) -> dict:
+    """Отправляет запрос к API с автоматическими повторами при ошибках"""
 
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    h, w = gray.shape
-    roi_x = min(roi_x, w - 1)
-    roi_y = min(roi_y, h - 1)
-    roi_w = min(roi_w, w - roi_x)
-    roi_h = min(roi_h, h - roi_y)
+    headers = {"Content-Type": "application/json"}
+    if API_KEY:
+        headers["Authorization"] = f"Bearer {API_KEY}"
 
-    roi = gray[roi_y:roi_y + roi_h, roi_x:roi_x + roi_w]
-    _, thresh = cv2.threshold(roi, 127, 255, cv2.THRESH_BINARY)
-    hair_pixels = cv2.countNonZero(thresh)
-    total_pixels = roi_w * roi_h
-    density = hair_pixels / total_pixels
+    for attempt in range(MAX_RETRIES):
+        try:
+            response = requests.post(API_URL, json=payload, headers=headers, timeout=timeout)
 
-    if density > 0.8:
-        return "густые"
-    elif density > 0.5:
-        return "средние"
-    else:
-        return "редкие"
+            if response.status_code == 200:
+                return response.json()
 
+            # 502, 503, 504 - временные ошибки сервера
+            if response.status_code in [502, 503, 504, 404]:
+                print(f"   ⚠️ Сервер временно недоступен (ошибка {response.status_code})")
+                if attempt < MAX_RETRIES - 1:
+                    print(f"   🔄 Повторная попытка через {RETRY_DELAY} сек... (попытка {attempt + 2}/{MAX_RETRIES})")
+                    time.sleep(RETRY_DELAY)
+                    continue
 
-def classify_hair_part(image_bytes):
-    """Определяет пробор волос (от 1 до 5)"""
-    np_arr = np.frombuffer(image_bytes, np.uint8)
-    img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-    if img is None:
-        raise ValueError("Не удалось загрузить изображение")
+            raise Exception(f"API error {response.status_code}: {response.text[:200]}")
 
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    h, w = gray.shape
+        except requests.exceptions.Timeout:
+            print(f"   ⚠️ Таймаут запроса")
+            if attempt < MAX_RETRIES - 1:
+                print(f"   🔄 Повторная попытка через {RETRY_DELAY} сек...")
+                time.sleep(RETRY_DELAY)
+                continue
+            raise
+        except requests.exceptions.ConnectionError:
+            print(f"   ⚠️ Ошибка соединения")
+            if attempt < MAX_RETRIES - 1:
+                print(f"   🔄 Повторная попытка через {RETRY_DELAY} сек...")
+                time.sleep(RETRY_DELAY)
+                continue
+            raise
 
-    top_part = gray[0:h // 3, 0:w]
-    edges = cv2.Canny(top_part, 50, 150)
-    lines = cv2.HoughLinesP(edges, 1, np.pi / 180, threshold=50, minLineLength=50, maxLineGap=10)
-
-    part_score = 0
-    center_line_detected = False
-    side_line_detected = False
-    zigzag_detected = False
-
-    if lines is not None:
-        for line in lines:
-            x1, y1, x2, y2 = line[0]
-            angle = np.abs(np.arctan2(y2 - y1, x2 - x1) * 180 / np.pi)
-
-            if 70 < angle < 110:
-                center_x = (x1 + x2) // 2
-
-                if w // 3 < center_x < 2 * w // 3:
-                    center_line_detected = True
-                    part_score += 2
-                elif center_x < w // 3 or center_x > 2 * w // 3:
-                    side_line_detected = True
-                    part_score += 1
-
-    left_half = top_part[:, :w // 2]
-    right_half = top_part[:, w // 2:]
-
-    diff = np.abs(
-        left_half.astype(np.float32) - cv2.resize(right_half, (left_half.shape[1], left_half.shape[0])).astype(
-            np.float32))
-    asymmetry_score = np.mean(diff)
-
-    if asymmetry_score > 30 and not center_line_detected:
-        zigzag_detected = True
-        part_score += 3
-
-    if center_line_detected and part_score >= 2:
-        return 1
-    elif side_line_detected and not center_line_detected:
-        return 2
-    elif zigzag_detected:
-        return 3
-    elif part_score == 0:
-        top_center = top_part[h // 6:h // 3, w // 3:2 * w // 3]
-        mean_intensity = np.mean(top_center)
-        if mean_intensity > 150:
-            return 4
-        else:
-            return 5
-    else:
-        return 2
+    raise Exception(f"Не удалось получить ответ после {MAX_RETRIES} попыток")
 
 
-def analyze_image(image_bytes):
-    """Анализирует одно изображение и возвращает метки"""
-    texture = classify_hair_texture(image_bytes)
-    density = estimate_density(image_bytes)
-    part_type = classify_hair_part(image_bytes)
+# =========================
+# 🖼️ ПОДГОТОВКА КОЛЛАЖА ИЗ 3 ФОТО
+# =========================
+def create_collage(image_bytes_list: List[bytes]) -> bytes:
+    images = []
+    max_height = 0
+
+    for img_bytes in image_bytes_list:
+        img = Image.open(BytesIO(img_bytes))
+        images.append(img)
+        if img.height > max_height:
+            max_height = img.height
+
+    resized_images = []
+    total_width = 0
+
+    for img in images:
+        new_width = int(img.width * (max_height / img.height))
+        resized = img.resize((new_width, max_height), Image.Resampling.LANCZOS)
+        resized_images.append(resized)
+        total_width += new_width
+
+    collage = Image.new('RGB', (total_width, max_height), (255, 255, 255))
+    x_offset = 0
+
+    for img in resized_images:
+        collage.paste(img, (x_offset, 0))
+        x_offset += img.width
+
+    img_byte_arr = BytesIO()
+    collage.save(img_byte_arr, format='JPEG', quality=85)
+    img_byte_arr.seek(0)
+
+    return img_byte_arr.getvalue()
+
+
+def encode_image_to_base64(image_bytes: bytes) -> str:
+    return base64.b64encode(image_bytes).decode('utf-8')
+
+
+# =========================
+# 🔍 АНАЛИЗ ВОЛОС
+# =========================
+def analyze_hair_characteristics(image_bytes_list: List[bytes]) -> dict:
+    """Анализирует волосы и возвращает характеристики"""
+    print("   📊 Анализ характеристик волос...")
+
+    collage_bytes = create_collage(image_bytes_list)
+    image_base64 = encode_image_to_base64(collage_bytes)
+
+    prompt = """
+    Проанализируй коллаж из 3 фото головы (слева-направо: сверху, спереди, сбоку).
+
+    Ответь строго в JSON формате без каких-либо пояснений. Используй только эти ключи:
+    {
+        "texture": "прямые" или "волнистые" или "курчавые" или "лысый",
+        "density": "густые" или "средние" или "редкие" или "отсутствует",
+        "part_type": число 0-5,
+        "problem_zones": "перечень проблемных зон через запятую"
+    }
+
+    Правила:
+    - texture: если нет волос → "лысый"
+    - density: если нет волос → "отсутствует"
+    - part_type: 0=лысый, 1-5=зона пробора слева-направо, 3=нет пробора
+    - problem_zones: зоны: "лобная", "теменная", "височная левая", "височная правая", "затылочная", "макушка", "пробор". Если проблем нет → "отсутствуют"
+
+    ВАЖНО: Верни ТОЛЬКО JSON объект.
+    """
+
+    payload = {
+        "model": "gemini-fast",  # Эта модель поддерживает vision
+        "messages": [{
+            "role": "user",
+            "content": [
+                {"type": "text", "text": prompt},
+                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}}
+            ]
+        }],
+        "temperature": 0.3,
+        "max_tokens": 300
+    }
+
+    response_data = make_api_request(payload, timeout=60)
+    raw = response_data["choices"][0]["message"]["content"]
+    print(f"   RAW ответ: {raw[:150]}...")
+    return parse_analysis_response(raw)
+
+
+def parse_analysis_response(text: str) -> dict:
+    """Парсит ответ ИИ и гарантирует наличие всех ключей"""
+
+    defaults = {
+        "texture": "прямые",
+        "density": "средние",
+        "part_type": 3,
+        "problem_zones": "отсутствуют"
+    }
+
+    # Очищаем текст от markdown
+    cleaned = text.strip()
+    if cleaned.startswith("```json"):
+        cleaned = cleaned[7:]
+    elif cleaned.startswith("```"):
+        cleaned = cleaned[3:]
+    if cleaned.endswith("```"):
+        cleaned = cleaned[:-3]
+    cleaned = cleaned.strip()
+
+    # Ищем JSON
+    match = re.search(r'\{.*\}', cleaned, re.DOTALL)
+    if not match:
+        print(f"   ⚠️ JSON не найден, использую значения по умолчанию")
+        return defaults
+
+    try:
+        result = json.loads(match.group(0))
+
+        # Заполняем отсутствующие ключи
+        for key in defaults:
+            if key not in result:
+                result[key] = defaults[key]
+
+        # Корректировка для лысых
+        if result.get("texture") == "лысый":
+            result["density"] = "отсутствует"
+            result["part_type"] = 0
+
+        return result
+
+    except json.JSONDecodeError as e:
+        print(f"   ⚠️ Ошибка парсинга JSON: {e}")
+        return defaults
+
+
+# =========================
+# 💇 ГЕНЕРАЦИЯ РЕКОМЕНДАЦИИ
+# =========================
+def generate_recommendation(characteristics: dict) -> dict:
+    """Генерирует рекомендацию по технике наращивания/замещения"""
+    print("   💈 Подбор техники наращивания...")
+
+    texture = characteristics.get("texture", "прямые")
+    density = characteristics.get("density", "средние")
+    part_type = characteristics.get("part_type", 3)
+    problem_zones = characteristics.get("problem_zones", "отсутствуют")
+
+    prompt = f"""
+    Ты мастер по наращиванию волос. Подбери технику исходя из характеристик:
+    - Структура: {texture}
+    - Густота: {density}
+    - Пробор: {part_type} (0=лысый, 1-5=зона слева-направо)
+    - Проблемные зоны: {problem_zones}
+
+    Выбери из техник: ленточное наращивание, голливудское наращивание, капсульное наращивание, микро-капсульное наращивание, афро-наращивание. Для проблемных зон используй замещение.
+
+    Ответь строго в JSON без комментариев:
+    {{
+        "technique_name": "название техники",
+        "materials": "список материалов одной строкой через запятую",
+        "scheme_description": "описание схемы размещения (1-2 предложения)",
+        "instruction": "что крепить, в каком порядке, в какой зоне. 2-3 предложения.",
+        "care_recommendations": "рекомендации по уходу. 1-2 предложения."
+    }}
+
+    ПРАВИЛА:
+    - Не используй трессы нигде кроме голливудского наращивания.
+    - Если лысый → предлагай замещение (система замещения волос, парик).
+    - Для редких волос → микро-капсульное или ленточное.
+    - Для густых → капсульное или голливудское.
+    - Для курчавых → афро-наращивание.
+    - Без воды, только суть.
+    """
+
+    payload = {
+        "model": "openai",  # Для текста достаточно обычной модели
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.5,
+        "max_tokens": 500
+    }
+
+    response_data = make_api_request(payload, timeout=30)
+    raw = response_data["choices"][0]["message"]["content"]
+    return parse_recommendation_response(raw)
+
+
+def parse_recommendation_response(text: str) -> dict:
+    """Парсит ответ с рекомендацией"""
+
+    defaults = {
+        "technique_name": "Микро-капсульное наращивание",
+        "materials": "микрокапсулы, кератин, щипцы",
+        "scheme_description": "Равномерное распределение по затылочной и височным зонам.",
+        "instruction": "Начать с затылка, затем виски. Капсулы крепить на расстоянии 1см от корня.",
+        "care_recommendations": "Мыть через 48 часов. Расчесывать от концов к корням."
+    }
+
+    cleaned = text.strip()
+    if cleaned.startswith("```json"):
+        cleaned = cleaned[7:]
+    elif cleaned.startswith("```"):
+        cleaned = cleaned[3:]
+    if cleaned.endswith("```"):
+        cleaned = cleaned[:-3]
+    cleaned = cleaned.strip()
+
+    try:
+        match = re.search(r'\{.*\}', cleaned, re.DOTALL)
+        if match:
+            result = json.loads(match.group(0))
+            for key in defaults:
+                if key not in result:
+                    result[key] = defaults[key]
+            return result
+    except json.JSONDecodeError:
+        pass
+
+    return defaults
+
+
+# =========================
+# 🎯 ОСНОВНАЯ ФУНКЦИЯ
+# =========================
+def analyze_and_recommend(image_bytes_list: List[bytes]) -> dict:
+    """Анализирует волосы и возвращает полную рекомендацию"""
+
+    if len(image_bytes_list) != 3:
+        raise ValueError("Требуется ровно 3 фото: сверху, спереди, сбоку")
+
+    characteristics = analyze_hair_characteristics(image_bytes_list)
+    recommendation = generate_recommendation(characteristics)
 
     return {
-        "texture": texture,
-        "density": density,
-        "part_type": part_type
+        "characteristics": characteristics,
+        "recommendation": recommendation
     }
+
+
+# =========================
+# 🧪 ТЕСТИРОВАНИЕ
+# =========================
+if __name__ == "__main__":
+    print("=" * 60)
+    print("🧪 АНАЛИЗ ВОЛОС И ПОДБОР ТЕХНИКИ НАРАЩИВАНИЯ")
+    print("=" * 60)
+
+    test_images = [
+        r"C:\Практика\prstartup\image\img.png",
+        r"C:\Практика\prstartup\image\img_1.png",
+        r"C:\Практика\prstartup\image\img_2.png"
+    ]
+
+    try:
+        image_bytes_list = []
+        photo_types = ["сверху", "спереди", "сбоку"]
+
+        for i, path in enumerate(test_images):
+            print(f"📂 Загрузка фото {i + 1}/3 ({photo_types[i]}): {path}")
+            try:
+                with open(path, "rb") as f:
+                    image_bytes_list.append(f.read())
+                print(f"   ✅ Успешно")
+            except FileNotFoundError:
+                print(f"   ❌ Файл не найден: {path}")
+                exit(1)
+
+        print("\n📤 Анализ фото и подбор техники...")
+        print("   ⏳ Ожидайте (10-30 секунд)...")
+
+        result = analyze_and_recommend(image_bytes_list)
+
+        chars = result["characteristics"]
+        rec = result["recommendation"]
+
+        print("\n" + "=" * 60)
+        print("📊 ХАРАКТЕРИСТИКИ ВОЛОС")
+        print("=" * 60)
+        print(f"💇 Структура:      {chars['texture']}")
+        print(f"📏 Густота:        {chars['density']}")
+        print(f"🎯 Зона пробора:   {chars['part_type']}")
+        print(f"⚠️ Проблемные зоны: {chars['problem_zones']}")
+
+        print("\n" + "=" * 60)
+        print("💈 РЕКОМЕНДАЦИЯ МАСТЕРА")
+        print("=" * 60)
+        print(f"\n🔧 ТЕХНИКА: {rec['technique_name']}")
+        print(f"\n📦 МАТЕРИАЛЫ: {rec['materials']}")
+        print(f"\n📐 СХЕМА: {rec['scheme_description']}")
+        print(f"\n📋 ИНСТРУКЦИЯ: {rec['instruction']}")
+        print(f"\n🧴 УХОД: {rec['care_recommendations']}")
+        print("\n" + "=" * 60)
+
+    except Exception as e:
+        print(f"\n❌ Ошибка: {e}")
+        import traceback
+
+        traceback.print_exc()
