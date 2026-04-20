@@ -10,7 +10,7 @@ from typing import Dict, List, Optional
 # =========================
 # 🔧 КОНФИГУРАЦИЯ API
 # =========================
-API_KEY = 'sk_gzRXyIxocRxqxbiKPDiV0YvVfh4MLgTc'
+API_KEY = 'sk_gzRXyIxocRxqxbiKPDiV0YvVfh4MLgTc789е'
 API_URL = "https://gen.pollinations.ai/v1/chat/completions"
 MAX_RETRIES = 3
 RETRY_DELAY = 3
@@ -112,7 +112,7 @@ def analyze_hair_characteristics(image_bytes_list: List[bytes]) -> dict:
     image_base64 = encode_image_to_base64(collage_bytes)
 
     prompt = """
-    Проанализируй коллаж из 3 фото головы (слева-направо: сверху, спереди, сбоку).
+    Проанализируй коллаж из 3 фото головы (слева-направо: сверху, сзади, сбоку).
 
     Ответь строго в JSON формате без каких-либо пояснений. Используй только эти ключи:
     {
@@ -288,17 +288,20 @@ def analyze_and_recommend(image_bytes_list: List[bytes]) -> dict:
     """Анализирует волосы и возвращает полную рекомендацию"""
 
     if len(image_bytes_list) != 3:
-        raise ValueError("Требуется ровно 3 фото: сверху, спереди, сбоку")
+        raise ValueError("Требуется ровно 3 фото: сверху, сзади, сбоку")
 
-    characteristics = analyze_hair_characteristics(image_bytes_list)
-    recommendation = generate_recommendation(characteristics)
+    char = analyze_hair_characteristics(image_bytes_list)
+    rec = generate_recommendation(char)
 
     return {
-        "characteristics": characteristics,
-        "recommendation": recommendation
+        "texture": char['texture'],
+        "density": char['density'],
+        "part_type": char['part_type'],
+        "problem_zones": char['problem_zones'],
+        "recommendation": rec
     }
 
-
+'''
 # =========================
 # 🧪 ТЕСТИРОВАНИЕ
 # =========================
@@ -315,7 +318,7 @@ if __name__ == "__main__":
 
     try:
         image_bytes_list = []
-        photo_types = ["сверху", "спереди", "сбоку"]
+        photo_types = ["сверху", "сзади", "сбоку"]
 
         for i, path in enumerate(test_images):
             print(f"📂 Загрузка фото {i + 1}/3 ({photo_types[i]}): {path}")
@@ -358,3 +361,4 @@ if __name__ == "__main__":
         import traceback
 
         traceback.print_exc()
+'''
