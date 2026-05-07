@@ -4,11 +4,13 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 import sqlite3
+from services.promo_services import activate_free_promo
 
 from core.config import SUBSCRIPTION_PLANS, SubscriptionPlan
 from db.models import PaymentRequest, PaymentConfirm
 from db.db import get_db_connection
-from services.subscription_service import get_user_subscription, create_subscription, use_extension
+from services.subscription_service import get_user_subscription, create_subscription, use_extension, \
+    create_subscription_with_promo
 from services.payment_service import PaymentProcessor
 
 router = APIRouter(tags=["Оплата и подписки"])
@@ -22,30 +24,26 @@ async def get_subscription_plans():
 
 @router.post("/subscription/create-payment")
 async def create_payment(request: PaymentRequest):
-    """Создать платёж для подписки"""
+    """Создать платёж с учётом промокода"""
+    from services.promo_services import validate_promo_code
+
     plan = SUBSCRIPTION_PLANS.get(request.plan_id)
     if not plan:
         raise HTTPException(status_code=404, detail="Тариф не найден")
 
     amount = plan.price
+    promo_info = None
 
-    # Применяем промокод
+    # ✅ Проверяем промокод
     if request.promo_code:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT discount_percent, valid_until, max_uses, used_count 
-            FROM promocodes WHERE code = ?
-        """, (request.promo_code.upper(),))
-        promo = cursor.fetchone()
-        conn.close()
+        promo_info = validate_promo_code(request.promo_code, request.plan_id)
 
-        if promo:
-            discount, valid_until, max_uses, used_count = promo
-            valid_until_date = datetime.fromisoformat(valid_until) if isinstance(valid_until, str) else valid_until
-
-            if datetime.now() < valid_until_date and used_count < max_uses:
-                amount = int(amount * (100 - discount) / 100)
+        if promo_info:
+            # Применяем скидку
+            if promo_info["discount_percent"] > 0:
+                amount = int(amount * (100 - promo_info["discount_percent"]) / 100)
+        else:
+            raise HTTPException(status_code=400, detail="Промокод недействителен")
 
     payment = PaymentProcessor.create_payment(
         amount=amount,
@@ -67,7 +65,8 @@ async def create_payment(request: PaymentRequest):
         "confirmation_url": payment["confirmation_url"],
         "amount": amount,
         "currency": "RUB",
-        "plan": plan.name
+        "plan": plan.name,
+        "promo_applied": promo_info is not None
     })
 
 
@@ -80,21 +79,23 @@ async def confirm_payment(request: PaymentConfirm):
     payment_status = PaymentProcessor.check_payment_status(request.payment_id)
 
     if payment_status == "paid":
-        cursor.execute("SELECT user_id, plan_id, amount FROM payments WHERE payment_id = ?", (request.payment_id,))
+        cursor.execute("SELECT user_id, plan_id, amount, promo_code FROM payments WHERE payment_id = ?",
+                       (request.payment_id,))
         row = cursor.fetchone()
 
         if not row:
             conn.close()
             raise HTTPException(status_code=404, detail="Платёж не найден")
 
-        user_id, plan_id, amount = row
+        user_id, plan_id, amount, promo_code = row
 
         cursor.execute("""
             UPDATE payments SET status = 'paid', paid_at = CURRENT_TIMESTAMP 
             WHERE payment_id = ?
         """, (request.payment_id,))
 
-        subscription = create_subscription(user_id, plan_id)
+        # ✅ Создаём подписку с учётом промокода
+        subscription = create_subscription_with_promo(user_id, plan_id, promo_code)
 
         conn.commit()
         conn.close()
@@ -109,13 +110,12 @@ async def confirm_payment(request: PaymentConfirm):
         conn.close()
         return JSONResponse(content={
             "success": False,
-            "message": "Платёж ещё не обработан. Пожалуйста, проверьте статус позже."
+            "message": "Платёж ещё не обработан"
         }, status_code=202)
 
     else:
         conn.close()
         raise HTTPException(status_code=400, detail="Платёж отклонён")
-
 
 @router.get("/subscription/status/{user_id}")
 async def get_subscription_status(user_id: str):
@@ -215,3 +215,20 @@ async def payment_webhook(request: dict):
         conn.close()
 
     return JSONResponse(content={"status": "ok"})
+
+# api/subscription.py
+
+@router.post("/subscription/activate-promo")
+async def activate_promo(request: dict):
+    """Активировать бесплатный промокод"""
+    user_id = request.get("user_id")
+    code = request.get("code")
+    
+    if not user_id or not code:
+        raise HTTPException(status_code=400, detail="user_id и code обязательны")
+    
+    try:
+        result = activate_free_promo(user_id, code)
+        return JSONResponse(content=result)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))

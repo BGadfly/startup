@@ -36,7 +36,6 @@ def get_user_subscription(user_id: str) -> Optional[Dict]:
         }
     return None
 
-
 def create_subscription(user_id: str, plan_id: str) -> Dict:
     """Создать новую подписку"""
     plan = SUBSCRIPTION_PLANS.get(plan_id)
@@ -74,7 +73,6 @@ def create_subscription(user_id: str, plan_id: str) -> Dict:
         "extensions_limit": plan.extension_limit
     }
 
-
 def use_extension(user_id: str) -> Dict:
     """Использовать один лимит наращивания"""
     subscription = get_user_subscription(user_id)
@@ -99,4 +97,68 @@ def use_extension(user_id: str) -> Dict:
         "success": True,
         "extensions_used": subscription["extensions_used"] + 1,
         "extensions_left": subscription["extensions_limit"] - subscription["extensions_used"] - 1
+    }
+
+
+def create_subscription_with_promo(
+        user_id: str,
+        plan_id: str,
+        promo_code: Optional[str] = None
+) -> Dict:
+    """Создать подписку с учётом промокода"""
+    from services.promo_services import validate_promo_code, use_promo_code
+
+    plan = SUBSCRIPTION_PLANS.get(plan_id)
+    if not plan:
+        raise ValueError("Тариф не найден")
+
+    # ✅ Параметры по умолчанию
+    extension_limit = plan.extension_limit
+    duration_days = plan.duration_days
+
+    # ✅ Применяем промокод если есть
+    promo_info = None
+    if promo_code:
+        promo_info = validate_promo_code(promo_code, plan_id)
+
+        if promo_info:
+            # Переопределяем лимиты если указано
+            if promo_info["override_extension_limit"]:
+                extension_limit = promo_info["override_extension_limit"]
+            if promo_info["override_duration_days"]:
+                duration_days = promo_info["override_duration_days"]
+
+            # Отмечаем использование
+            use_promo_code(promo_code)
+
+    subscription_id = str(uuid.uuid4())
+    expires_at = datetime.now() + timedelta(days=duration_days)
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Деактивируем старые
+    cursor.execute("""
+        UPDATE subscriptions SET status = 'expired' 
+        WHERE user_id = ? AND status = 'active'
+    """, (user_id,))
+
+    # Создаём новую
+    cursor.execute("""
+        INSERT INTO subscriptions 
+        (subscription_id, user_id, plan_id, status, expires_at, extensions_limit)
+        VALUES (?, ?, ?, 'active', ?, ?)
+    """, (subscription_id, user_id, plan_id, expires_at, extension_limit))
+
+    conn.commit()
+    conn.close()
+
+    return {
+        "subscription_id": subscription_id,
+        "user_id": user_id,
+        "plan_id": plan_id,
+        "status": "active",
+        "expires_at": expires_at.isoformat(),
+        "extensions_limit": extension_limit,
+        "promo_used": promo_info["code"] if promo_info else None
     }

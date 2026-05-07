@@ -10,7 +10,7 @@ from typing import Dict, List, Optional
 # =========================
 # 🔧 КОНФИГУРАЦИЯ API
 # =========================
-API_KEY = 'sk_gzRXyIxocRxqxbiKPDiV0YvVfh4MLgTc789е'
+API_KEY = 'sk_gzRXyIxocRxqxbiKPDiV0YvVfh4MLgTc'
 API_URL = "https://gen.pollinations.ai/v1/chat/completions"
 MAX_RETRIES = 3
 RETRY_DELAY = 3
@@ -104,23 +104,31 @@ def encode_image_to_base64(image_bytes: bytes) -> str:
 # =========================
 # 🔍 АНАЛИЗ ВОЛОС
 # =========================
-def analyze_hair_characteristics(image_bytes_list: List[bytes]) -> dict:
+def analyze_hair_characteristics(image_bytes_list: List[bytes], comment: str = "") -> dict:
     """Анализирует волосы и возвращает характеристики"""
     print("   📊 Анализ характеристик волос...")
 
     collage_bytes = create_collage(image_bytes_list)
     image_base64 = encode_image_to_base64(collage_bytes)
 
-    prompt = """
-    Проанализируй коллаж из 3 фото головы (слева-направо: сверху, сзади, сбоку).
+    # ✅ Добавляем комментарий клиента в промпт
+    comment_text = ""
+    if comment and comment.strip():
+        comment_text = f"""
+    ВАЖНО: У клиента есть пожелание: "{comment.strip()}".
+    Учти это пожелание при анализе, но не искажай фактические характеристики волос на фото.
+    """
 
+    prompt = f"""
+    Проанализируй коллаж из 3 фото головы (слева-направо: сверху, сзади, сбоку).
+    {comment_text}
     Ответь строго в JSON формате без каких-либо пояснений. Используй только эти ключи:
-    {
+    {{
         "texture": "прямые" или "волнистые" или "курчавые" или "лысый",
         "density": "густые" или "средние" или "редкие" или "отсутствует",
         "part_type": число 0-5,
         "problem_zones": "перечень проблемных зон через запятую"
-    }
+    }}
 
     Правила:
     - texture: если нет волос → "лысый"
@@ -132,7 +140,7 @@ def analyze_hair_characteristics(image_bytes_list: List[bytes]) -> dict:
     """
 
     payload = {
-        "model": "gemini-fast",  # Эта модель поддерживает vision
+        "model": "gemini-fast",
         "messages": [{
             "role": "user",
             "content": [
@@ -148,7 +156,6 @@ def analyze_hair_characteristics(image_bytes_list: List[bytes]) -> dict:
     raw = response_data["choices"][0]["message"]["content"]
     print(f"   RAW ответ: {raw[:150]}...")
     return parse_analysis_response(raw)
-
 
 def parse_analysis_response(text: str) -> dict:
     """Парсит ответ ИИ и гарантирует наличие всех ключей"""
@@ -199,7 +206,7 @@ def parse_analysis_response(text: str) -> dict:
 # =========================
 # 💇 ГЕНЕРАЦИЯ РЕКОМЕНДАЦИИ
 # =========================
-def generate_recommendation(characteristics: dict) -> dict:
+def generate_recommendation(characteristics: dict, comment: str = "") -> dict:
     """Генерирует рекомендацию по технике наращивания/замещения"""
     print("   💈 Подбор техники наращивания...")
 
@@ -208,13 +215,21 @@ def generate_recommendation(characteristics: dict) -> dict:
     part_type = characteristics.get("part_type", 3)
     problem_zones = characteristics.get("problem_zones", "отсутствуют")
 
+    # ✅ Добавляем пожелание клиента
+    comment_text = ""
+    if comment and comment.strip():
+        comment_text = f"""
+    Пожелание клиента: "{comment.strip()}".
+    Подбери технику, которая максимально соответствует этому пожеланию.
+    """
+
     prompt = f"""
     Ты мастер по наращиванию волос. Подбери технику исходя из характеристик:
     - Структура: {texture}
     - Густота: {density}
     - Пробор: {part_type} (0=лысый, 1-5=зона слева-направо)
     - Проблемные зоны: {problem_zones}
-
+    {comment_text}
     Выбери из техник: ленточное наращивание, голливудское наращивание, капсульное наращивание, микро-капсульное наращивание, афро-наращивание. Для проблемных зон используй замещение.
 
     Ответь строго в JSON без комментариев:
@@ -232,11 +247,12 @@ def generate_recommendation(characteristics: dict) -> dict:
     - Для редких волос → микро-капсульное или ленточное.
     - Для густых → капсульное или голливудское.
     - Для курчавых → афро-наращивание.
+    - УЧТИ пожелание клиента при выборе техники и материалов.
     - Без воды, только суть.
     """
 
     payload = {
-        "model": "openai",  # Для текста достаточно обычной модели
+        "model": "openai",
         "messages": [{"role": "user", "content": prompt}],
         "temperature": 0.5,
         "max_tokens": 500
@@ -245,7 +261,6 @@ def generate_recommendation(characteristics: dict) -> dict:
     response_data = make_api_request(payload, timeout=30)
     raw = response_data["choices"][0]["message"]["content"]
     return parse_recommendation_response(raw)
-
 
 def parse_recommendation_response(text: str) -> dict:
     """Парсит ответ с рекомендацией"""
@@ -284,14 +299,15 @@ def parse_recommendation_response(text: str) -> dict:
 # =========================
 # 🎯 ОСНОВНАЯ ФУНКЦИЯ
 # =========================
-def analyze_and_recommend(image_bytes_list: List[bytes]) -> dict:
+def analyze_and_recommend(image_bytes_list: List[bytes], comment: str = "") -> dict:
     """Анализирует волосы и возвращает полную рекомендацию"""
 
     if len(image_bytes_list) != 3:
         raise ValueError("Требуется ровно 3 фото: сверху, сзади, сбоку")
 
-    char = analyze_hair_characteristics(image_bytes_list)
-    rec = generate_recommendation(char)
+    # ✅ Передаём комментарий в обе функции
+    char = analyze_hair_characteristics(image_bytes_list, comment)
+    rec = generate_recommendation(char, comment)
 
     return {
         "texture": char['texture'],
@@ -300,7 +316,6 @@ def analyze_and_recommend(image_bytes_list: List[bytes]) -> dict:
         "problem_zones": char['problem_zones'],
         "recommendation": rec
     }
-
 '''
 # =========================
 # 🧪 ТЕСТИРОВАНИЕ

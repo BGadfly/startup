@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  backend:
+    build: .
+    container_name: hair_analysis_backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      # Сохраняем БД на хосте, чтобы данные не терялись при перезапуске
+      - ./data:/app/data
+      # Монтируем код для разработки (можно убрать в продакшене)
+      - .:/app
+    environment:
+      - TZ=Europe/Moscow
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Опционально: если нужна отдельная БД вместо SQLite
+  # postgres:
+  #   image: postgres:16-alpine
+  #   container_name: hair_analysis_db
+  #   restart: unless-stopped
+  #   environment:
+  #     POSTGRES_USER: hairuser
+  #     POSTGRES_PASSWORD: hairpass
+  #     POSTGRES_DB: hairanalysis
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   ports:
+  #     - "5432:5432"
+
+# volumes:
+#   postgres_data:
