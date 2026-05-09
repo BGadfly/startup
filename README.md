@@ -31,27 +31,26 @@ https://risok-9467789.postman.co/workspace/risOk's-Workspace~6d588963-9e3f-4132-
 как запустить бек:
 ввести по очереди команды с папки проекта
 
-bash
-# Если есть .venv
+Если есть .venv
 source .venv/bin/activate
 
-# Установи зависимости (если не установлены)
+Установи зависимости (если не установлены)
 pip install -r requirements.txt
 
-# Запусти сервер
+Запусти сервер
 uvicorn main:app --host 0.0.0.0 --port 8000
-4. Для фоновой работы используй screen
-bash
-# Установи screen
+Для фоновой работы используй screen
+
+Установи screen
 apt install screen -y
 
-# Создай сессию
+Создай сессию
 screen -S ses_back
 
-# Запусти сервер
+Запусти сервер
 uvicorn main:app --host 0.0.0.0 --port 8000
 
-# Отключись от screen (Ctrl+A, потом D)
+Отключись от screen (Ctrl+A, потом D)
 
-# Вернуться к сессии:
+Вернуться к сессии:
 screen -r ses_back
