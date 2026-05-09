@@ -25,3 +25,33 @@
 
 Ссылка на готовые запросы в постмане: 
 https://risok-9467789.postman.co/workspace/risOk's-Workspace~6d588963-9e3f-4132-8561-23b8d1663696/collection/44211064-149af0d9-3a95-4850-a7b1-e157eabe446a?action=share&source=copy-link&creator=44211064
+
+
+
+как запустить бек:
+ввести по очереди команды с папки проекта
+
+bash
+# Если есть .venv
+source .venv/bin/activate
+
+# Установи зависимости (если не установлены)
+pip install -r requirements.txt
+
+# Запусти сервер
+uvicorn main:app --host 0.0.0.0 --port 8000
+4. Для фоновой работы используй screen
+bash
+# Установи screen
+apt install screen -y
+
+# Создай сессию
+screen -S ses_back
+
+# Запусти сервер
+uvicorn main:app --host 0.0.0.0 --port 8000
+
+# Отключись от screen (Ctrl+A, потом D)
+
+# Вернуться к сессии:
+screen -r ses_back
