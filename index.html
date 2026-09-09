@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400..700&family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet">
+    <title>Парик.нет - Без парика проще</title>
+    <style>
+        body {
+            margin: 0px;
+            font-family: 'Open Sans', sans-serif;
+        }
+
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 1000;
+            background: white;
+        }
+
+        .logo-block {
+            display: flex;
+            align-items: center;
+        }
+
+        .logo-block a {
+            margin-left: 10px;
+            color: black;
+            text-decoration: none;
+            font-size: 2.5rem;
+            font-family: 'Caveat', cursive;
+        }
+
+        .logo-image {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        nav {
+            display: flex;
+            width: 100vw;
+            margin: 0 auto;
+            padding: 10px 0;
+            box-shadow: 0 4px 15px rgba(241, 151, 171, 0.5);
+            align-items: center;
+            justify-content: space-around;
+            border-radius: 0 0 20px 20px; 
+            background-color: white;
+        }
+
+        nav a {
+            text-decoration: none;
+            color: black;
+            font-size: 1rem;
+            font-weight: 500;
+            margin-left: 20px;
+        }
+
+        .doing-sector {
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            height: 100vh;
+        }
+
+        .doing-image {
+            border-radius: 50%;
+            width: 400px;
+            height: 400px;
+            object-fit: cover;
+            box-shadow: 0 4px 15px rgba(241, 151, 171, 0.5);
+        }
+
+        .utp-text {
+            max-width: 600px;
+        }
+
+        .utp-text h1 {
+            font-family: 'Caveat', cursive;
+            font-size: 3.5rem;
+            line-height: 1.2;
+            margin-bottom: 20px;
+        }
+
+        .utp-text p {
+            font-size: 1.5rem;
+            margin-bottom: 30px;
+        }
+
+        .utp-text button {
+            background-color: #C89A8B;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            color: white;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .utp-text button:hover {
+            transform: scale(1.05);
+        }
+
+        .about-project {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 80px 20px;
+            background-color: #333333;
+            color: white;
+            text-align: center;
+            height: 80vh;
+        }
+
+        .about-project h1 {
+            font-family: 'Caveat', cursive;
+            font-size: 3.5rem;
+            color: #C89A8B;
+            margin-bottom: 30px;
+        }
+
+        .about-project p {
+            max-width: 800px;
+            font-size: 1.2rem;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .plus {
+            padding: 80px 20px;
+            background-color: #f9f9f9;
+            text-align: center;
+        }
+
+        .plus h1 {
+            font-family: 'Caveat', cursive;
+            font-size: 3rem;
+            color: #333;
+        }
+
+        .cards-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .plus-card {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            padding: 30px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 4px 15px rgba(241, 151, 171, 0.5);
+            text-align: left;
+        }
+
+        .plus-card h3 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #C89A8B;
+            font-family: 'Open Sans', sans-serif;
+            font-weight: 700;
+            font-size: 1.3rem;
+        }
+
+        .plus-card p {
+            margin: 0;
+            font-size: 1rem;
+            line-height: 1.5;
+            color: #333;
+        }
+        
+        .services {
+            height: 90vh;
+            background-color: #333333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 0 20px;
+            box-sizing: border-box;
+        }
+        
+        .services h1 {
+            font-family: 'Caveat', cursive;
+            font-size: 3rem;
+            color: #C89A8B;
+            margin-bottom: 10px;
+        }
+
+        .services h2 {
+            font-family: 'Open Sans', sans-serif;
+            font-size: 1.2rem;
+            color: #fff;
+            margin-bottom: 50px;
+            font-weight: 400;
+            opacity: 0.8;
+        }
+
+        .pricing-container {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-around;
+            gap: 50px;
+            width: 100%;
+            max-width: 900px;
+        }
+
+        .card-services {
+            background-color: white;
+            display: flex;
+            flex-direction: column;
+            padding: 40px 30px;
+            border-radius: 20px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 4px 15px rgba(241, 151, 171, 0.5);
+            text-align: left;
+            position: relative;
+        }
+
+        .card-services h3 {
+            font-family: 'Open Sans', sans-serif;
+            font-size: 1.5rem;
+            color: #333;
+            margin-top: 0;
+            margin-bottom: 20px;
+            font-weight: 700;
+        }
+
+        .card-services ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .card-services li {
+            padding: 12px 0;
+            border-bottom: 1px solid #eee;
+            color: #555;
+            font-size: 1rem;
+            position: relative;
+            padding-left: 25px;
+        }
+
+        .card-services li:last-child {
+            border-bottom: none;
+        }
+
+        .card-services li::before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #C89A8B;
+            font-weight: bold;
+        }
+
+        .contacts {
+            padding: 130px 0px;
+            background-color: #fff;
+        }
+
+        .contacts-wrapper {
+            height: 100vh;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
+            max-width: 1000px;
+            margin: 0 auto;
+            align-items: start;
+        }
+
+        .contacts-info h1 {
+            font-family: 'Caveat', cursive;
+            font-size: 3.5rem;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            color: #666;
+            margin-bottom: 40px;
+            line-height: 1.5;
+        }
+
+        .contact-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .contact-item .icon {
+            font-size: 1.5rem;
+            width: 40px;
+            height: 40px;
+            background: rgba(241, 151, 171, 0.1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .contact-item strong {
+            display: block;
+            font-size: 0.9rem;
+            color: #888;
+            margin-bottom: 3px;
+        }
+
+        .contact-item p {
+            margin: 0;
+            font-size: 1.1rem;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .contacts-form {
+            background: #f9f9f9;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            color: #555;
+            font-weight: 600;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #eee;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-family: 'Open Sans', sans-serif;
+            transition: border-color 0.3s;
+            box-sizing: border-box;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #C89A8B;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 15px;
+            background-color: #C89A8B;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s, background-color 0.2s;
+            font-family: 'Open Sans', sans-serif;
+        }
+
+        .submit-btn:hover {
+            background-color: #b58576;
+            transform: translateY(-2px);
+        }
+
+        @media (max-width: 768px) {
+            .contacts-wrapper {
+                grid-template-columns: 1fr;
+                gap: 40px;
+            }
+            
+            .contacts-form {
+                padding: 25px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .doing-sector {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            nav {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .logo-block {
+                margin-bottom: 10px;
+            }
+
+            .pricing-container {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .card-services {
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <nav>
+            <div class="logo-block">
+                <img src="./image.png" alt="logo" class="logo-image">
+                <a href="#doing">Парик.нет</a>
+            </div>
+            <div>
+                <a href="#about-project">О проекте</a>
+                <a href="#plus">Возможности</a>
+                <a href="#services">Услуги</a>
+                <a href="#contacts">Контакты</a>
+            </div>
+        </nav>
+    </header>
+
+    <section id="doing" class="doing-sector">
+        <div class="utp-text">
+            <h1>Ваш персональный AI-консультант по наращиванию прямо у вас под рукой!</h1>
+            <p>Первое использование бесплатно!</p>
+            <button>Скачать приложение</button>
+        </div>
+        <div>
+            <img src="./doing.jpg" alt="Master at work" class="doing-image">
+        </div>
+    </section>
+
+    <section id="about-project" class="about-project">
+        <h1>О проекте</h1>
+        <p>«Парик.нет» — это умный онлайн-консультант, созданный специально для мастеров по наращиванию и системам замещения волос. Мы помогаем вам быстро находить верные решения в сложных ситуациях, заменяя долгие поиски информации и метод проб и ошибок на точные индивидуальные рекомендации.</p>
+        <p>Наш сервис анализирует особенности клиента и предлагает безопасные схемы работы, учитывая все нюансы современных методов. Это позволяет вам экономить время, избегать профессиональных ошибок и всегда оставаться на связи с актуальной базой знаний.</p>
+    </section>
+
+    <section id="plus" class="plus">
+        <h1>Возможности и преимущества</h1>
+        <div class="cards-container">
+            <div class="plus-card">
+                <h3>Мгновенный подбор метода</h3>
+                <p>Загрузите фото проблемной зоны и опишите запрос клиента — AI проанализирует структуру волос, густоту и состояние кожи головы, чтобы предложить идеальный метод.</p>
+            </div>
+            <div class="plus-card">
+                <h3>Защита от ошибок</h3>
+                <p>Система автоматически исключает варианты, которые могут навредить волосам в конкретной ситуации, снижая риск возврата недовольного клиента.</p>
+            </div>
+            <div class="plus-card">
+                <h3>Готовая схема работы</h3>
+                <p>Вы получаете не просто название метода, а пошаговый план: какие материалы использовать, какую нагрузку выдержат родные волосы и как правильно распределить вес прядей.</p>
+            </div>
+            <div class="plus-card">
+                <h3>Всегда под рукой</h3>
+                <p>Сервис доступен 24/7. Вы можете проконсультироваться прямо во время приема клиента, не ставя его в неловкое положение долгими раздумьями.</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="services" class="services">
+        <h1>Услуги</h1>
+        <h2>Наши подписки</h2>
+        <div class="pricing-container">
+            <div class="card-services">
+                <h3>Базовый</h3>
+                <ul>
+                    <li>3 запроса в час</li>
+                    <li>Базовые рекомендации</li>
+                    <li>Сохранения результата</li>
+                </ul>
+            </div>
+            <div class="card-services">
+                <h3>Профессиональный</h3>
+                <ul>
+                    <li>Неограниченные запросы</li>
+                    <li>Приоритетная поддержка</li>
+                    <li>Сохранение истории</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+    <section id="contacts" class="contacts">
+        <div class="contacts-wrapper">
+            <div class="contacts-info">
+                <h1>Свяжитесь с нами</h1>
+                <p class="subtitle">Остались вопросы по подписке или нужна помощь с настройкой? Мы всегда на связи.</p>
+                
+                <div class="contact-item">
+                    <span class="icon">📧</span>
+                    <div>
+                        <strong>Email</strong>
+                        <p>hello@parik.net</p>
+                    </div>
+                </div>
+                
+                <div class="contact-item">
+                    <span class="icon">📞</span>
+                    <div>
+                        <strong>Телефон</strong>
+                        <p>+8 (800) 555-35-35</p>
+                    </div>
+                </div>
+                
+                <div class="contact-item">
+                    <span class="icon">💬</span>
+                    <div>
+                        <strong>Вконтакте</strong>
+                        <p>@parik_net_support</p>
+                    </div>
+                </div>
+            </div>
+
+            <form class="contacts-form">
+                <div class="form-group">
+                    <label>Ваше имя</label>
+                    <input type="text" placeholder="Анна Иванова" required>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" placeholder="anna@example.com" required>
+                </div>
+                <div class="form-group">
+                    <label>Сообщение</label>
+                    <textarea rows="4" placeholder="Расскажите о вашем запросе..." required></textarea>
+                </div>
+                <button type="submit" class="submit-btn">Отправить сообщение</button>
+            </form>
+        </div>
+    </section>
+</body>
+</html>
