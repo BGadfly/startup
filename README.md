@@ -5,3 +5,4 @@
 Команда 2: Петрова Кристина, Коротаева Елена
 
 Ссылка на Я.Метрика по лендингу: https://metrika.yandex.ru/dashboard?id=112750412
+Ссылка на файл с пользовательским соглашением: https://github.com/rise171/lending_startup/blob/main/soglashenie.html
