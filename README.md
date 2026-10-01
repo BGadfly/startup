@@ -1,3 +1,5 @@
+https://docs.google.com/presentation/d/1Ls73wLcLDCSEu_zjdW35bIdj6taqNrjTuL95Zobbl9A/edit?usp=sharing
+
 # Развитие навыков принятия решений, управления рисками, коммуникации с командой и клиентами
 
 Стартап в информационных технологиях
